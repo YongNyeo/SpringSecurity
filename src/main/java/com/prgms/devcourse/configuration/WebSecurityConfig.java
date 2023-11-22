@@ -1,5 +1,6 @@
 package com.prgms.devcourse.configuration;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,7 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -19,28 +19,36 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class WebSecurityConfig {
+
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests((authorizeRequests)->
+                .authorizeHttpRequests((authorizeRequests) ->
                         authorizeRequests
-                                .requestMatchers("/me").hasAnyRole("USER","ADMIN")
+                                .requestMatchers("/me").hasAnyRole("USER", "ADMIN")
                                 .anyRequest().permitAll()
                 )
-                .formLogin((formLogin)->
+                .formLogin((formLogin) ->
                         formLogin
                                 .defaultSuccessUrl("/")
                                 .permitAll()
-                );
-
+                )
+                .rememberMe((rememberMe) ->
+                        rememberMe
+                                .rememberMeParameter("remember")
+                                .tokenValiditySeconds(604800) // 7일(default 14일)
+                                .alwaysRemember(false) // remember-me 기능 항상 실행
+                                .userDetailsService(userDetailsService()) // 사용자 계정 조회
+                        );
         return http.build();
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            UserDetailsService userDetailsService,
+            org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
 
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
@@ -54,7 +62,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
+    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
         UserDetails user = User.withDefaultPasswordEncoder()
                 .username("user")
                 .password("user123")
@@ -67,7 +75,7 @@ public class WebSecurityConfig {
                 .roles("ADMIN")
                 .build();
 
-        return new InMemoryUserDetailsManager(user,admin);
+        return new InMemoryUserDetailsManager(user, admin);
     }
 
     @Bean
